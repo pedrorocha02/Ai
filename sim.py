@@ -3,6 +3,9 @@ import time
 import threading
 import pygame
 import sys
+import time
+
+original_stdout = sys.stdout
 
 # Default values of signal timers
 defaultGreen = {0:10, 1:10, 2:10, 3:10}
@@ -28,6 +31,8 @@ vehicleTypes = {0:'car', 1:'bus', 2:'truck', 3:'bike'}
 # All the directions available (Altough the vehicles don't change lanes/direction)
 directionNumbers = {0:'right', 1:'down', 2:'left', 3:'up'}
 
+vehiclesCount = {'right':0, 'down':0, 'left':0, 'up':0}    # Count of vehicles in each lane
+
 # Coordinates of signal image, timer, and vehicle count
 signalCoords = [(530,230),(810,230),(810,570),(530,570)]
 signalTimerCoords = [(530,210),(810,210),(810,550),(530,550)]
@@ -41,16 +46,47 @@ defaultStop = {'right': 580, 'down': 320, 'left': 810, 'up': 545}
 stoppingGap = 15    # stopping gap
 movingGap = 15   # moving gap
 
+
+# Exit list file
+exitListFile = open('console_output.txt', 'w')
+sys.stdout = exitListFile
+exitListFile.write("Vehicle;WaitTime;Direction;Lane;TimeStamp\n")
+
+# Up wait list file
+with open('upWait.txt', 'w') as upFile:
+    upFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+
+# Right wait list file
+with open('rightWait.txt', 'w') as rightFile:
+    rightFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+
+# Left wait list file
+with open('leftWait.txt', 'w') as leftFile:
+    leftFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+
+# Down wait list file
+with open('downWait.txt', 'w') as downFile:
+    downFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+
+    
+# Waiting list of vehicles to a file
+#with open('waiting_list.txt', 'w') as waitingFile:
+    #waitingFile.write("right;down;left;up\n")
+
+# Waiting list
+#waitingList = {'right': [], 'down': [], 'left': [], 'up': []}
+
 # Initialize the game
 pygame.init()
 simulation = pygame.sprite.Group()
 
 class TrafficSignal:
-    def __init__(self, red, yellow, green):
+    def __init__(self, red, yellow, green,lastGreen):
         self.red = red
         self.yellow = yellow
         self.green = green
         self.signalText = ""
+        self.lastGreen = lastGreen
         
 class Vehicle(pygame.sprite.Sprite):
     def __init__(self, lane, vehicleClass, direction_number, direction):
@@ -63,6 +99,8 @@ class Vehicle(pygame.sprite.Sprite):
         self.x = x[direction][lane]
         self.y = y[direction][lane]
         self.crossed = 0
+        self.creationTime = time.time()
+        self.exitTime = ""
         vehicles[direction][lane].append(self)
         self.index = len(vehicles[direction][lane]) - 1
         path = "images/" + direction + "/" + vehicleClass + ".png"
@@ -97,41 +135,71 @@ class Vehicle(pygame.sprite.Sprite):
 
     def render(self, screen):
         screen.blit(self.image, (self.x, self.y))
+
+    
     
     # How a car moves depending on its direction
     def move(self):
+
         if(self.direction=='right'):
             if(self.crossed==0 and self.x+self.image.get_rect().width>stopLines[self.direction]):   # if the image has crossed stop line now
                 self.crossed = 1
+
+                self.exitTime = time.time()
+                time_difference = round(self.exitTime - self.creationTime,1)
+                vehiclesCount[self.direction]-=1
+                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+
             if((self.x+self.image.get_rect().width<=self.stop or self.crossed == 1 or (currentGreen==0 and currentYellow==0)) and (self.index==0 or self.x+self.image.get_rect().width<(vehicles[self.direction][self.lane][self.index-1].x - movingGap))):                
             # (if the image has not reached its stop coordinate or has crossed stop line or has green signal) and (it is either the first vehicle in that lane or it is has enough gap to the next vehicle in that lane)
                 self.x += self.speed  # move the vehicle
+
         elif(self.direction=='down'):
             if(self.crossed==0 and self.y+self.image.get_rect().height>stopLines[self.direction]):
                 self.crossed = 1
+
+                self.exitTime = time.time()
+                time_difference = round(self.exitTime - self.creationTime,1)
+                vehiclesCount[self.direction]-=1
+                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+
             if((self.y+self.image.get_rect().height<=self.stop or self.crossed == 1 or (currentGreen==1 and currentYellow==0)) and (self.index==0 or self.y+self.image.get_rect().height<(vehicles[self.direction][self.lane][self.index-1].y - movingGap))):                
                 self.y += self.speed
+
         elif(self.direction=='left'):
             if(self.crossed==0 and self.x<stopLines[self.direction]):
                 self.crossed = 1
+
+                self.exitTime = time.time()
+                time_difference = round(self.exitTime - self.creationTime,1)
+                vehiclesCount[self.direction]-=1
+                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+
             if((self.x>=self.stop or self.crossed == 1 or (currentGreen==2 and currentYellow==0)) and (self.index==0 or self.x>(vehicles[self.direction][self.lane][self.index-1].x + vehicles[self.direction][self.lane][self.index-1].image.get_rect().width + movingGap))):                
-                self.x -= self.speed   
+                self.x -= self.speed  
+
         elif(self.direction=='up'):
             if(self.crossed==0 and self.y<stopLines[self.direction]):
                 self.crossed = 1
+
+                self.exitTime = time.time()
+                time_difference = round(self.exitTime - self.creationTime,1)
+                vehiclesCount[self.direction]-=1
+                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+
             if((self.y>=self.stop or self.crossed == 1 or (currentGreen==3 and currentYellow==0)) and (self.index==0 or self.y>(vehicles[self.direction][self.lane][self.index-1].y + vehicles[self.direction][self.lane][self.index-1].image.get_rect().height + movingGap))):                
                 self.y -= self.speed
-
+            
 # Begin the values of the game: TraficSignals, 
 # Initialization of the 4 signals with default values
 def initialize():
-    ts1 = TrafficSignal(0, defaultYellow, defaultGreen[0])
+    ts1 = TrafficSignal(0, defaultYellow, defaultGreen[0],time.time())
     signals.append(ts1)
-    ts2 = TrafficSignal(ts1.red+ts1.yellow+ts1.green, defaultYellow, defaultGreen[1])
+    ts2 = TrafficSignal(ts1.red+ts1.yellow+ts1.green, defaultYellow, defaultGreen[1],time.time())
     signals.append(ts2)
-    ts3 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[2])
+    ts3 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[2],time.time())
     signals.append(ts3)
-    ts4 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[3])
+    ts4 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[3],time.time())
     signals.append(ts4)
     repeat()
 
@@ -140,6 +208,9 @@ def repeat():
     while(signals[currentGreen].green>0):   # while the timer of current green signal is not zero
         updateValues(currentGreen)
         time.sleep(1)
+
+    #Set last time green signal was in here
+    signals[currentGreen].lastGreen = time.time()    
     currentYellow = 1   # set yellow signal on
     # reset stop coordinates of lanes and vehicles 
     for i in range(0,3):
@@ -187,9 +258,71 @@ def generateVehicles():
             direction_number = 2
         elif(temp<dist[3]):
             direction_number = 3
+
         Vehicle(lane_number, vehicleTypes[vehicle_type], direction_number, directionNumbers[direction_number])
+
+        vehiclesCount[directionNumbers[direction_number]]+=1
         # Time between generating a new vehicle (1 second)
         time.sleep(1)
+
+def calculateTraffic():
+    while True:
+        calculateWaitList("up")
+        calculateWaitList("right")
+        calculateWaitList("left")
+        calculateWaitList("down")
+        time.sleep(1)
+    
+
+# Calculate traffic density
+def calculateWaitList(direction):
+    for index, dicDirection in directionNumbers.items():
+        if direction == dicDirection:
+            directionIndex = index
+
+    match direction:
+        case "up":
+            with open('upWait.txt', 'a') as upFile:
+                upFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case "right":
+            with open('rightWait.txt', 'a') as rightFile:
+                rightFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case "left":
+            with open('leftWait.txt', 'a') as leftFile:
+                leftFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case "down":
+            with open('downWait.txt', 'a') as downFile:
+                downFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case _:
+            print("Invalid direction")
+
+#Will determine the AI decision based on the traffic density
+def calculateMetric(direction):
+    vehicleCountTotal=vehiclesCount["down"]+vehiclesCount["up"]+vehiclesCount["left"]+vehiclesCount["right"]
+    perDirectionAvg=vehiclesCount[direction]/vehicleCountTotal
+    avgWait=calculateCurrentAvgWait(direction)
+    lastTimeGreen=calculateLastGreen(direction)
+    
+    # WORK IN PROGRESS
+
+    return 0
+
+def calculateLastGreen(directionIndex):
+    lastTimeGreen = signals[directionIndex].lastGreen
+    if(lastTimeGreen!= 0):
+        lastTimeGreen = time.time() - signals[directionIndex].lastGreen
+    return round(lastTimeGreen,1)
+
+def calculateCurrentAvgWait(direction):
+    totalWait = 0
+    if(vehiclesCount[direction]==0):
+        return 0
+    else:
+        for lane in range(0, 2):
+            for vehicle in vehicles[direction][lane]:
+                if(vehicle.crossed!=1):
+                    totalWait += time.time() - vehicle.creationTime
+        return round(totalWait/vehiclesCount[direction],1)
 
 class Main:
     thread1 = threading.Thread(name="initialization",target=initialize, args=())  # initialization with the main game components
@@ -222,6 +355,10 @@ class Main:
     thread2.daemon = True
     thread2.start()
 
+    thread3= threading.Thread(name="calculateTraffic",target=calculateTraffic, args=())    # Generating vehicles after loading the other game components
+    thread3.daemon = True
+    thread3.start()
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -253,7 +390,16 @@ class Main:
         for vehicle in simulation:  
             screen.blit(vehicle.image, [vehicle.x, vehicle.y])
             vehicle.move()
+
         pygame.display.update()
 
+    # Close the file when the loop exits
+    exitListFile.close()
+    # Reset sys.stdout to the original value
+    sys.stdout = original_stdout
+    upFile.close()
+    rightFile.close()
+    leftFile.close()
+    downFile.close()
 
 Main()
