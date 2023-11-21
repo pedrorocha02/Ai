@@ -8,15 +8,16 @@ import time
 original_stdout = sys.stdout
 
 # Default values of signal timers
-defaultGreen = {0:10, 1:10, 2:10, 3:10}
+defaultGreen = {0:10, 1:10, 2:10, 3:10}  # The values need to be updated by a function
 defaultRed = 150
 defaultYellow = 5
 
 # Stores the properties of the 4 signals
 signals = []
 noOfSignals = 4
-currentGreen = 0   # Indicates which signal is green currently (0 to (noOfSignals - 1) = 3)
-nextGreen = (currentGreen+1) % noOfSignals    # Indicates which signal will turn green next
+currentGreen = 0   # Indicates which signal is green currently (0 - "right"), (1 - "down"), (2 - "left"), (3 - "up")
+nextGreen = 0 
+
 currentYellow = 0   # Indicates whether yellow signal is on or off 
 
 speeds = {'car':2.25, 'bus':1.8, 'truck':1.8, 'bike':2.5}  # Average speeds of the different vehicles (x and y speed)
@@ -40,12 +41,10 @@ signalTimerCoords = [(530,210),(810,210),(810,550),(530,550)]
 # Coordinates of stop lines (y - (up, down) and x - (right, left))
 stopLines = {'right': 590, 'down': 330, 'left': 800, 'up': 535}
 defaultStop = {'right': 580, 'down': 320, 'left': 810, 'up': 545}
-# stops = {'right': [580,580,580], 'down': [320,320,320], 'left': [810,810,810], 'up': [545,545,545]}
 
 # Gap between vehicles
 stoppingGap = 15    # stopping gap
 movingGap = 15   # moving gap
-
 
 # Exit list file
 exitListFile = open('console_output.txt', 'w')
@@ -67,14 +66,6 @@ with open('leftWait.txt', 'w') as leftFile:
 # Down wait list file
 with open('downWait.txt', 'w') as downFile:
     downFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
-
-    
-# Waiting list of vehicles to a file
-#with open('waiting_list.txt', 'w') as waitingFile:
-    #waitingFile.write("right;down;left;up\n")
-
-# Waiting list
-#waitingList = {'right': [], 'down': [], 'left': [], 'up': []}
 
 # Initialize the game
 pygame.init()
@@ -136,8 +127,6 @@ class Vehicle(pygame.sprite.Sprite):
     def render(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
-    
-    
     # How a car moves depending on its direction
     def move(self):
 
@@ -195,7 +184,7 @@ class Vehicle(pygame.sprite.Sprite):
 def initialize():
     ts1 = TrafficSignal(0, defaultYellow, defaultGreen[0],time.time())
     signals.append(ts1)
-    ts2 = TrafficSignal(ts1.red+ts1.yellow+ts1.green, defaultYellow, defaultGreen[1],time.time())
+    ts2 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[1],time.time())
     signals.append(ts2)
     ts3 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[2],time.time())
     signals.append(ts3)
@@ -219,15 +208,20 @@ def repeat():
     while(signals[currentGreen].yellow>0):  # while the timer of current yellow signal is not zero
         updateValues(currentGreen)
         time.sleep(1)
+
     currentYellow = 0   # set yellow signal off
     
-     # reset all signal times of current signal to default times
+    # reset all signal times of current signal to default times
     signals[currentGreen].green = defaultGreen[currentGreen]
     signals[currentGreen].yellow = defaultYellow
     signals[currentGreen].red = defaultRed
-       
+
+
+    #print(f"{calculateNextGreen()}") 
+    nextGreen = calculateNextGreen() % noOfSignals
     currentGreen = nextGreen # set next signal as green signal
-    nextGreen = (currentGreen+1)%noOfSignals    # set next green signal
+    #nextGreen = (currentGreen+1)%noOfSignals    # set next green signal
+   
     signals[nextGreen].red = signals[currentGreen].yellow+signals[currentGreen].green    # set the red time of next to next signal as (yellow time + green time) of next signal
     repeat()  
 
@@ -272,7 +266,21 @@ def calculateTraffic():
         calculateWaitList("left")
         calculateWaitList("down")
         time.sleep(1)
-    
+
+def calculateNextGreen():
+    # Returns the direction and sets the time of the next green signal
+    # Called when the time of the currentGreen is 0
+    # Will need to have many more metrics to evaluate the next green signal TODO
+
+    directionWithMostVehicles= max(vehiclesCount.values())
+    aux=""
+    for direction, count in vehiclesCount.items():
+        if count == directionWithMostVehicles:
+            aux = direction
+
+    for index, dicDirection in directionNumbers.items():
+        if aux == dicDirection:
+            return index
 
 # Calculate traffic density
 def calculateWaitList(direction):
@@ -295,17 +303,6 @@ def calculateWaitList(direction):
                 downFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
         case _:
             print("Invalid direction")
-
-#Will determine the AI decision based on the traffic density
-def calculateMetric(direction):
-    vehicleCountTotal=vehiclesCount["down"]+vehiclesCount["up"]+vehiclesCount["left"]+vehiclesCount["right"]
-    perDirectionAvg=vehiclesCount[direction]/vehicleCountTotal
-    avgWait=calculateCurrentAvgWait(direction)
-    lastTimeGreen=calculateLastGreen(direction)
-    
-    # WORK IN PROGRESS
-
-    return 0
 
 def calculateLastGreen(directionIndex):
     lastTimeGreen = signals[directionIndex].lastGreen
