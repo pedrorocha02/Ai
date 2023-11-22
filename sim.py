@@ -92,6 +92,7 @@ class Vehicle(pygame.sprite.Sprite):
         self.crossed = 0
         self.creationTime = time.time()
         self.exitTime = ""
+        self.stopTime = ""
         vehicles[direction][lane].append(self)
         self.index = len(vehicles[direction][lane]) - 1
         path = "images/" + direction + "/" + vehicleClass + ".png"
@@ -165,7 +166,8 @@ class Vehicle(pygame.sprite.Sprite):
                 print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
 
             if((self.x>=self.stop or self.crossed == 1 or (currentGreen==2 and currentYellow==0)) and (self.index==0 or self.x>(vehicles[self.direction][self.lane][self.index-1].x + vehicles[self.direction][self.lane][self.index-1].image.get_rect().width + movingGap))):                
-                self.x -= self.speed  
+                self.x -= self.speed
+                self.stopTime = time.time()  
 
         elif(self.direction=='up'):
             if(self.crossed==0 and self.y<stopLines[self.direction]):
@@ -178,17 +180,18 @@ class Vehicle(pygame.sprite.Sprite):
 
             if((self.y>=self.stop or self.crossed == 1 or (currentGreen==3 and currentYellow==0)) and (self.index==0 or self.y>(vehicles[self.direction][self.lane][self.index-1].y + vehicles[self.direction][self.lane][self.index-1].image.get_rect().height + movingGap))):                
                 self.y -= self.speed
+                self.stopTime = time.time()
             
 # Begin the values of the game: TraficSignals, 
 # Initialization of the 4 signals with default values
 def initialize():
-    ts1 = TrafficSignal(0, defaultYellow, defaultGreen[0],time.time())
+    ts1 = TrafficSignal(0, defaultYellow, defaultGreen[0], None)
     signals.append(ts1)
-    ts2 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[1],time.time())
+    ts2 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[1], None)
     signals.append(ts2)
-    ts3 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[2],time.time())
+    ts3 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[2], None)
     signals.append(ts3)
-    ts4 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[3],time.time())
+    ts4 = TrafficSignal(defaultRed, defaultYellow, defaultGreen[3], None)
     signals.append(ts4)
     repeat()
 
@@ -216,14 +219,12 @@ def repeat():
     signals[currentGreen].yellow = defaultYellow
     signals[currentGreen].red = defaultRed
 
-
-    #print(f"{calculateNextGreen()}") 
     nextGreen = calculateNextGreen() % noOfSignals
     currentGreen = nextGreen # set next signal as green signal
     #nextGreen = (currentGreen+1)%noOfSignals    # set next green signal
    
     signals[nextGreen].red = signals[currentGreen].yellow+signals[currentGreen].green    # set the red time of next to next signal as (yellow time + green time) of next signal
-    repeat()  
+    repeat()
 
 # Update values of the signal timers after every second
 def updateValues(currentGreen):
@@ -306,9 +307,12 @@ def calculateWaitList(direction):
 
 def calculateLastGreen(directionIndex):
     lastTimeGreen = signals[directionIndex].lastGreen
-    if(lastTimeGreen!= 0):
+    if(lastTimeGreen!= 0 and lastTimeGreen!= None):
         lastTimeGreen = time.time() - signals[directionIndex].lastGreen
-    return round(lastTimeGreen,1)
+        return round(lastTimeGreen,1)
+    else:
+        # Indicates that the signal is yet to have a time where it was green
+        return -1
 
 def calculateCurrentAvgWait(direction):
     totalWait = 0
@@ -317,8 +321,10 @@ def calculateCurrentAvgWait(direction):
     else:
         for lane in range(0, 2):
             for vehicle in vehicles[direction][lane]:
-                if(vehicle.crossed!=1):
-                    totalWait += time.time() - vehicle.creationTime
+                if(vehicle.crossed!=1 and vehicle.stopTime!= ""):
+                    totalWait += time.time() - vehicle.stopTime
+                else:
+                    totalWait += 0
         return round(totalWait/vehiclesCount[direction],1)
 
 class Main:
