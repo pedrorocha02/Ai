@@ -47,24 +47,24 @@ stoppingGap = 15    # stopping gap
 movingGap = 15   # moving gap
 
 # Exit list file
-exitListFile = open('console_output.txt', 'w')
+exitListFile = open('console_output.csv', 'w')
 sys.stdout = exitListFile
 exitListFile.write("Vehicle;WaitTime;Direction;Lane;TimeStamp\n")
 
 # Up wait list file
-with open('upWait.txt', 'w') as upFile:
+with open('upWait.csv', 'w') as upFile:
     upFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
 
 # Right wait list file
-with open('rightWait.txt', 'w') as rightFile:
+with open('rightWait.csv', 'w') as rightFile:
     rightFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
 
 # Left wait list file
-with open('leftWait.txt', 'w') as leftFile:
+with open('leftWait.csv', 'w') as leftFile:
     leftFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
 
 # Down wait list file
-with open('downWait.txt', 'w') as downFile:
+with open('downWait.csv', 'w') as downFile:
     downFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
 
 # Initialize the game
