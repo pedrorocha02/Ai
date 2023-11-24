@@ -4,7 +4,7 @@ import threading
 import pygame
 import sys
 import time
-import statistics
+import math
 
 original_stdout = sys.stdout
 
@@ -34,6 +34,7 @@ vehicleTypes = {0:'car', 1:'bus', 2:'truck', 3:'bike'}
 directionNumbers = {0:'right', 1:'down', 2:'left', 3:'up'}
 
 vehiclesCount = {'right':0, 'down':0, 'left':0, 'up':0}    # Count of vehicles in each lane
+numVehicles = 10
 
 # Coordinates of signal image, timer, and vehicle count
 signalCoords = [(530,230),(810,230),(810,570),(530,570)]
@@ -137,34 +138,37 @@ class Vehicle(pygame.sprite.Sprite):
                 self.crossed = 1
 
                 self.exitTime = time.time()
-                time_difference = round(self.exitTime - self.creationTime,1)
+                waitTime = round(self.exitTime - self.creationTime,1)
                 vehiclesCount[self.direction]-=1
-                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+
+                print(f"{self.vehicleClass};{waitTime};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
 
             if((self.x+self.image.get_rect().width<=self.stop or self.crossed == 1 or (currentGreen==0 and currentYellow==0)) and (self.index==0 or self.x+self.image.get_rect().width<(vehicles[self.direction][self.lane][self.index-1].x - movingGap))):                
             # (if the image has not reached its stop coordinate or has crossed stop line or has green signal) and (it is either the first vehicle in that lane or it is has enough gap to the next vehicle in that lane)
                 self.x += self.speed  # move the vehicle
+                self.stopTime = time.time()
 
         elif(self.direction=='down'):
             if(self.crossed==0 and self.y+self.image.get_rect().height>stopLines[self.direction]):
                 self.crossed = 1
 
                 self.exitTime = time.time()
-                time_difference = round(self.exitTime - self.creationTime,1)
+                waitTime = round(self.exitTime - self.creationTime,1)
                 vehiclesCount[self.direction]-=1
-                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+                print(f"{self.vehicleClass};{waitTime};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
 
             if((self.y+self.image.get_rect().height<=self.stop or self.crossed == 1 or (currentGreen==1 and currentYellow==0)) and (self.index==0 or self.y+self.image.get_rect().height<(vehicles[self.direction][self.lane][self.index-1].y - movingGap))):                
                 self.y += self.speed
+                self.stopTime = time.time()
 
         elif(self.direction=='left'):
             if(self.crossed==0 and self.x<stopLines[self.direction]):
                 self.crossed = 1
 
                 self.exitTime = time.time()
-                time_difference = round(self.exitTime - self.creationTime,1)
+                waitTime = round(self.exitTime - self.creationTime,1)
                 vehiclesCount[self.direction]-=1
-                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+                print(f"{self.vehicleClass};{waitTime};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
 
             if((self.x>=self.stop or self.crossed == 1 or (currentGreen==2 and currentYellow==0)) and (self.index==0 or self.x>(vehicles[self.direction][self.lane][self.index-1].x + vehicles[self.direction][self.lane][self.index-1].image.get_rect().width + movingGap))):                
                 self.x -= self.speed
@@ -175,9 +179,9 @@ class Vehicle(pygame.sprite.Sprite):
                 self.crossed = 1
 
                 self.exitTime = time.time()
-                time_difference = round(self.exitTime - self.creationTime,1)
+                waitTime = round(self.exitTime - self.creationTime,1)
                 vehiclesCount[self.direction]-=1
-                print(f"{self.vehicleClass};{time_difference};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
+                print(f"{self.vehicleClass};{waitTime};{self.direction};{self.lane};{time.strftime('%H:%M:%S', time.localtime())}")
 
             if((self.y>=self.stop or self.crossed == 1 or (currentGreen==3 and currentYellow==0)) and (self.index==0 or self.y>(vehicles[self.direction][self.lane][self.index-1].y + vehicles[self.direction][self.lane][self.index-1].image.get_rect().height + movingGap))):                
                 self.y -= self.speed
@@ -239,34 +243,44 @@ def updateValues(currentGreen):
             signals[i].red-=1
 
 # Generating vehicles in the simulation
-def generateVehicles():
-    while(True):
-        vehicle_type = random.randint(0,3)
-        lane_number = random.randint(1,2)
-        temp = random.randint(0,99)
+def generateVehicles(num=None):
+    if num ==0:
+        return
+
+    if num == None:
+        num = numVehicles
+    
+    n=num    
+    vehicle_type = random.randint(0,3)
+    lane_number = random.randint(1,2)
+    temp = random.randint(0,99)
+    direction_number = 0
+    dist = [25,50,75,100]
+    if(temp<dist[0]):
         direction_number = 0
-        dist = [25,50,75,100]
-        if(temp<dist[0]):
-            direction_number = 0
-        elif(temp<dist[1]):
-            direction_number = 1
-        elif(temp<dist[2]):
-            direction_number = 2
-        elif(temp<dist[3]):
-            direction_number = 3
+    elif(temp<dist[1]):
+        direction_number = 1
+    elif(temp<dist[2]):
+        direction_number = 2
+    elif(temp<dist[3]):
+        direction_number = 3
 
-        Vehicle(lane_number, vehicleTypes[vehicle_type], direction_number, directionNumbers[direction_number])
+    Vehicle(lane_number, vehicleTypes[vehicle_type], direction_number, directionNumbers[direction_number])
 
-        vehiclesCount[directionNumbers[direction_number]]+=1
-        # Time between generating a new vehicle (1 second)
-        time.sleep(1)
+    vehiclesCount[directionNumbers[direction_number]]+=1
+    
+    time.sleep(1)
+    
+    n-=1
+
+    generateVehicles(n)
 
 def calculateTraffic():
     while True:
-        calculateAvgAndStandardDeviationGivenTheDirection("up")
-        calculateAvgAndStandardDeviationGivenTheDirection("right")
-        calculateAvgAndStandardDeviationGivenTheDirection("left")
-        calculateAvgAndStandardDeviationGivenTheDirection("down")
+        calculateMetricOutput("up")
+        calculateMetricOutput("right")
+        calculateMetricOutput("left")
+        calculateMetricOutput("down")
         time.sleep(1)
 
 def calculateNextGreen():
@@ -306,7 +320,7 @@ def calculateWaitList(direction):
         case _:
             print("Invalid direction")
 
-def calculateAvgAndStandardDeviationGivenTheDirection(direction):
+def calculateMetricOutput(direction):
     # Calculate average wait time
     directionAvgWait = calculateCurrentAvgWait(direction)
 
@@ -345,7 +359,7 @@ def calculateCurrentAvgWait(direction):
     else:
         for lane in range(0, 2):
             for vehicle in vehicles[direction][lane]:
-                if(vehicle.crossed!=1 and vehicle.stopTime!= ""):
+                if(vehicle.crossed!=1 and vehicle.stopTime!=""):
                     totalWait += time.time() - vehicle.stopTime
                 else:
                     totalWait += 0
@@ -360,13 +374,13 @@ def calculateCurrentStandardDeviation(direction):
 
     for lane in range(0, 2):
         for vehicle in vehicles[direction][lane]:
-            if vehicle.crossed != 1 and vehicle.stopTime != "":
-                # Assuming vehicle.stopTime is the wait time for the current vehicle
-                wait_times.append(time.time() - vehicle.stopTime)
+            if vehicle.crossed != 1 and vehicle.stopTime!="":
+                currentWaitTime = time.time() - vehicle.creationTime
+                wait_times.append(currentWaitTime)
 
     # Calculate standard deviation
     if len(wait_times) > 1:
-        deviation = statistics.stdev(wait_times)
+        deviation = round(math.sqrt(sum((x - directionAvgWait) ** 2 for x in wait_times) / (len(wait_times) - 1)),1)
     else:
         deviation = 0
 
