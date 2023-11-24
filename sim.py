@@ -4,6 +4,7 @@ import threading
 import pygame
 import sys
 import time
+import statistics
 
 original_stdout = sys.stdout
 
@@ -53,19 +54,19 @@ exitListFile.write("Vehicle;WaitTime;Direction;Lane;TimeStamp\n")
 
 # Up wait list file
 with open('upWait.csv', 'w') as upFile:
-    upFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+    upFile.write("Num;AvgWait;DesvPad;TimeStamp\n")
 
 # Right wait list file
 with open('rightWait.csv', 'w') as rightFile:
-    rightFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+    rightFile.write("Num;AvgWait;DesvPad;TimeStamp\n")
 
 # Left wait list file
 with open('leftWait.csv', 'w') as leftFile:
-    leftFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+    leftFile.write("Num;AvgWait;DesvPad;TimeStamp\n")
 
 # Down wait list file
 with open('downWait.csv', 'w') as downFile:
-    downFile.write("Num;AvgWait;LastGreen;TimeStamp\n")
+    downFile.write("Num;AvgWait;DesvPad;TimeStamp\n")
 
 # Initialize the game
 pygame.init()
@@ -262,10 +263,10 @@ def generateVehicles():
 
 def calculateTraffic():
     while True:
-        calculateWaitList("up")
-        calculateWaitList("right")
-        calculateWaitList("left")
-        calculateWaitList("down")
+        calculateAvgAndStandardDeviationGivenTheDirection("up")
+        calculateAvgAndStandardDeviationGivenTheDirection("right")
+        calculateAvgAndStandardDeviationGivenTheDirection("left")
+        calculateAvgAndStandardDeviationGivenTheDirection("down")
         time.sleep(1)
 
 def calculateNextGreen():
@@ -305,6 +306,29 @@ def calculateWaitList(direction):
         case _:
             print("Invalid direction")
 
+def calculateAvgAndStandardDeviationGivenTheDirection(direction):
+    # Calculate average wait time
+    directionAvgWait = calculateCurrentAvgWait(direction)
+
+    # Calculate standard deviation
+    directionStandardDeviation = calculateCurrentStandardDeviation(direction)
+
+    match direction:
+        case "up":
+            with open('upWait.csv', 'a') as upFile:
+                upFile.write(f"{vehiclesCount[direction]};{directionAvgWait};{directionStandardDeviation};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case "right":
+            with open('rightWait.csv', 'a') as rightFile:
+                rightFile.write(f"{vehiclesCount[direction]};{directionAvgWait};{directionStandardDeviation};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case "left":
+            with open('leftWait.csv', 'a') as leftFile:
+                leftFile.write(f"{vehiclesCount[direction]};{directionAvgWait};{directionStandardDeviation};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case "down":
+            with open('downWait.csv', 'a') as downFile:
+                downFile.write(f"{vehiclesCount[direction]};{directionAvgWait};{directionStandardDeviation};{time.strftime('%H:%M:%S', time.localtime())}\n")
+        case _:
+            print("Invalid direction")
+
 def calculateLastGreen(directionIndex):
     lastTimeGreen = signals[directionIndex].lastGreen
     if(lastTimeGreen!= 0 and lastTimeGreen!= None):
@@ -326,6 +350,27 @@ def calculateCurrentAvgWait(direction):
                 else:
                     totalWait += 0
         return round(totalWait/vehiclesCount[direction],1)
+
+def calculateCurrentStandardDeviation(direction):
+
+    directionAvgWait = calculateCurrentAvgWait(direction)
+
+    # List to store wait times for vehicles
+    wait_times = []
+
+    for lane in range(0, 2):
+        for vehicle in vehicles[direction][lane]:
+            if vehicle.crossed != 1 and vehicle.stopTime != "":
+                # Assuming vehicle.stopTime is the wait time for the current vehicle
+                wait_times.append(time.time() - vehicle.stopTime)
+
+    # Calculate standard deviation
+    if len(wait_times) > 1:
+        deviation = statistics.stdev(wait_times)
+    else:
+        deviation = 0
+
+    return deviation
 
 class Main:
     thread1 = threading.Thread(name="initialization",target=initialize, args=())  # initialization with the main game components
