@@ -291,16 +291,16 @@ def calculateWaitList(direction):
 
     match direction:
         case "up":
-            with open('upWait.txt', 'a') as upFile:
+            with open('upWait.csv', 'a') as upFile:
                 upFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
         case "right":
-            with open('rightWait.txt', 'a') as rightFile:
+            with open('rightWait.csv', 'a') as rightFile:
                 rightFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
         case "left":
-            with open('leftWait.txt', 'a') as leftFile:
+            with open('leftWait.csv', 'a') as leftFile:
                 leftFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
         case "down":
-            with open('downWait.txt', 'a') as downFile:
+            with open('downWait.csv', 'a') as downFile:
                 downFile.write(f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(directionIndex)};{time.strftime('%H:%M:%S', time.localtime())}\n")
         case _:
             print("Invalid direction")
