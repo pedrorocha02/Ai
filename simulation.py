@@ -12,9 +12,9 @@ defaultYellow = 5
 # Stores the properties of the 4 signals
 signals = []
 noOfSignals = 4
-currentGreen = 0   # Indicates which signal is green currently (0 to (noOfSignals - 1) = 3)
-nextGreen = (currentGreen+1) % noOfSignals    # Indicates which signal will turn green next
-currentYellow = 0   # Indicates whether yellow signal is on or off 
+current_green_index = 0   # Indicates which signal is green currently (0 to (noOfSignals - 1) = 3)
+next_green_index = (current_green_index + 1) % noOfSignals    # Indicates which signal will turn green next
+is_yellow_on = 0   # Indicates whether yellow signal is on or off
 
 speeds = {'car':2.25, 'bus':1.8, 'truck':1.8, 'bike':2.5}  # Average speeds of the different vehicles (x and y speed)
 
@@ -103,23 +103,23 @@ class Vehicle(pygame.sprite.Sprite):
         if(self.direction=='right'):
             if(self.crossed==0 and self.x+self.image.get_rect().width>stopLines[self.direction]):   # if the image has crossed stop line now
                 self.crossed = 1
-            if((self.x+self.image.get_rect().width<=self.stop or self.crossed == 1 or (currentGreen==0 and currentYellow==0)) and (self.index==0 or self.x+self.image.get_rect().width<(vehicles[self.direction][self.lane][self.index-1].x - movingGap))):                
+            if((self.x+self.image.get_rect().width<=self.stop or self.crossed == 1 or (current_green_index == 0 and is_yellow_on == 0)) and (self.index == 0 or self.x + self.image.get_rect().width < (vehicles[self.direction][self.lane][self.index - 1].x - movingGap))):
             # (if the image has not reached its stop coordinate or has crossed stop line or has green signal) and (it is either the first vehicle in that lane or it is has enough gap to the next vehicle in that lane)
                 self.x += self.speed  # move the vehicle
         elif(self.direction=='down'):
             if(self.crossed==0 and self.y+self.image.get_rect().height>stopLines[self.direction]):
                 self.crossed = 1
-            if((self.y+self.image.get_rect().height<=self.stop or self.crossed == 1 or (currentGreen==1 and currentYellow==0)) and (self.index==0 or self.y+self.image.get_rect().height<(vehicles[self.direction][self.lane][self.index-1].y - movingGap))):                
+            if((self.y+self.image.get_rect().height<=self.stop or self.crossed == 1 or (current_green_index == 1 and is_yellow_on == 0)) and (self.index == 0 or self.y + self.image.get_rect().height < (vehicles[self.direction][self.lane][self.index - 1].y - movingGap))):
                 self.y += self.speed
         elif(self.direction=='left'):
             if(self.crossed==0 and self.x<stopLines[self.direction]):
                 self.crossed = 1
-            if((self.x>=self.stop or self.crossed == 1 or (currentGreen==2 and currentYellow==0)) and (self.index==0 or self.x>(vehicles[self.direction][self.lane][self.index-1].x + vehicles[self.direction][self.lane][self.index-1].image.get_rect().width + movingGap))):                
+            if((self.x>=self.stop or self.crossed == 1 or (current_green_index == 2 and is_yellow_on == 0)) and (self.index == 0 or self.x > (vehicles[self.direction][self.lane][self.index - 1].x + vehicles[self.direction][self.lane][self.index - 1].image.get_rect().width + movingGap))):
                 self.x -= self.speed   
         elif(self.direction=='up'):
             if(self.crossed==0 and self.y<stopLines[self.direction]):
                 self.crossed = 1
-            if((self.y>=self.stop or self.crossed == 1 or (currentGreen==3 and currentYellow==0)) and (self.index==0 or self.y>(vehicles[self.direction][self.lane][self.index-1].y + vehicles[self.direction][self.lane][self.index-1].image.get_rect().height + movingGap))):                
+            if((self.y>=self.stop or self.crossed == 1 or (current_green_index == 3 and is_yellow_on == 0)) and (self.index == 0 or self.y > (vehicles[self.direction][self.lane][self.index - 1].y + vehicles[self.direction][self.lane][self.index - 1].image.get_rect().height + movingGap))):
                 self.y -= self.speed
 
 # Begin the values of the game: TraficSignals, 
@@ -136,7 +136,7 @@ def initialize():
     repeat()
 
 def repeat():
-    global currentGreen, currentYellow, nextGreen
+    global current_green_index, is_yellow_on, next_green_index
     while(signals[currentGreen].green>0):   # while the timer of current green signal is not zero
         updateValues(currentGreen)
         time.sleep(1)
@@ -164,7 +164,7 @@ def repeat():
 def updateValues(currentGreen):
     for i in range(0, noOfSignals):
         if(i==currentGreen):
-            if(currentYellow==0):
+            if(is_yellow_on==0):
                 signals[i].green-=1
             else:
                 signals[i].yellow-=1
@@ -229,8 +229,8 @@ class Main:
 
         screen.blit(background,(0,0))   # display background in simulation
         for i in range(0,noOfSignals):  # display signal and set timer according to current status: green, yello, or red
-            if(i==currentGreen):
-                if(currentYellow==1):
+            if(i==current_green_index):
+                if(is_yellow_on==1):
                     signals[i].signalText = signals[i].yellow
                     screen.blit(yellowSignal, signalCoords[i])
                 else:
