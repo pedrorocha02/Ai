@@ -1,13 +1,12 @@
 import random
 import pygame
-import math
 import sys
 import time
 import threading
 import statistics
 
 from TrafficSignal import TrafficSignal
-from manager import calculate_next_green
+from manager import calculate_next_green_time
 
 original_stdout = sys.stdout
 
@@ -16,9 +15,9 @@ num_vehicles = 100
 crossed_vehicle_count = 0
 
 # Default values of signal timers
-defaultGreen = {0: 2, 1: 2, 2: 2, 3: 2}  # The values need to be updated by a function
+defaultGreen = {0: 10, 1: 10, 2: 10, 3: 10}  # The values need to be updated by a function
 defaultRed = 50
-defaultYellow = 1
+defaultYellow = 2
 
 # Stores the properties of the 4 signals
 no_of_signals = 4
@@ -203,10 +202,10 @@ def initialize():
 
 
 def repeat():
-    global current_green_index, is_yellow_on, next_green_index
+    global defaultGreen, current_green_index, is_yellow_on, next_green_index
 
     # while the timer of current green signal is not zero
-    while (signals[current_green_index].green > 0):
+    while signals[current_green_index].green > 0:
         update_values(current_green_index)
         time.sleep(1)
 
@@ -220,7 +219,7 @@ def repeat():
     for i in range(0, 3):
         for vehicle in vehicles[directionNumbers[current_green_index]][i]:
             vehicle.stop = defaultStop[directionNumbers[current_green_index]]
-    while (signals[current_green_index].yellow > 0):  # while the timer of current yellow signal is not zero
+    while signals[current_green_index].yellow > 0:  # while the timer of current yellow signal is not zero
         update_values(current_green_index)
         time.sleep(1)
 
@@ -232,13 +231,18 @@ def repeat():
     signals[current_green_index].yellow = defaultYellow
     signals[current_green_index].red = defaultRed
 
-    next_green_index = calculate_next_green(vehiclesCount, directionNumbers) % no_of_signals
-    current_green_index = next_green_index  # set next signal as green signal
-    # nextGreen = (currentGreen+1)%noOfSignals    # set next green signal
+    light = calculate_next_green_time(current_green_index, vehiclesCount, directionNumbers)
+    index = light[0]
+    open_for = light[1]
+    next_green_index = index % no_of_signals
+    signals[next_green_index].green = open_for
+
+    # set next signal as green signal
+    current_green_index = next_green_index
 
     # set the red time of next to next signal as (yellow time + green time) of next signal
-    signals[next_green_index].red = signals[current_green_index].yellow + signals[
-        current_green_index].green
+    # signals[next_green_index].red = signals[current_green_index].yellow + signals[
+    #     current_green_index].green
     repeat()
 
 
@@ -358,7 +362,7 @@ class Main:
     background = pygame.image.load('images/intersection.png')
 
     screen = pygame.display.set_mode(screenSize)
-    pygame.display.set_caption("MEI - AI")
+    pygame.display.set_caption("Scenario 3 - Green based on number of vehicles and open according to this number")
 
     # Loading signal images and font
     redSignal = pygame.image.load('images/signals/red.png')
