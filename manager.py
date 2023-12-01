@@ -13,3 +13,13 @@ def calculate_next_green(vehicles_count, direction_numbers):
     for index, dicDirection in direction_numbers.items():
         if aux == dicDirection:
             return index
+
+
+# def calculateLastGreen(directionIndex):
+#     lastTimeGreen = signals[directionIndex].lastGreen
+#     if (lastTimeGreen != 0 and lastTimeGreen != None):
+#         lastTimeGreen = time.time() - signals[directionIndex].lastGreen
+#         return round(lastTimeGreen, 1)
+#     else:
+#         # Indicates that the signal is yet to have a time where it was green
+#         return -1

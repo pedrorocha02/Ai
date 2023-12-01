@@ -1,9 +1,10 @@
 import random
-import threading
 import pygame
+import math
 import sys
 import time
-import math
+import threading
+import statistics
 
 from TrafficSignal import TrafficSignal
 from manager import calculate_next_green
@@ -11,7 +12,7 @@ from manager import calculate_next_green
 original_stdout = sys.stdout
 
 # Number of vehicles to be generated
-num_vehicles = 5
+num_vehicles = 100
 crossed_vehicle_count = 0
 
 # Default values of signal timers
@@ -62,17 +63,19 @@ stoppingGap = 15  # stopping gap
 movingGap = 15  # moving gap
 
 # Exit list file
-exitListFile = open('output.csv', 'w')
+exitListFile = open('./output/_output.csv', 'w')
 sys.stdout = exitListFile
-exitListFile.write("Direction;Lane;Vehicle class;Index;AvgWait;TimeStamp\n")
+exitListFile.write("Direction;Lane;Vehicle class;Index;AvgWait\n")
 
-# for file in directionNumbers.values():
-#     with open(f'./output/{file}Wait.csv', 'w') as f:
-#         f.write("Index;Vehicle class;Lane;AvgWait;TimeStamp\n")
+for direction in directionNumbers.values():
+    open(f'./output/{direction}.csv', 'w')
 
 # Initialize the game
 pygame.init()
 simulation = pygame.sprite.Group()
+
+# List to store wait times for vehicles
+wait_times_per_direction = {"right": [], "down": [], "left": [], "up": []}
 
 
 class Vehicle(pygame.sprite.Sprite):
@@ -183,8 +186,14 @@ class Vehicle(pygame.sprite.Sprite):
         global crossed_vehicle_count
         crossed_vehicle_count += 1
 
-        with open(f'./output.csv', 'a'):
-            print(f'{self.direction};{self.lane};{self.vehicleClass};{self.index};{wait_time};{time.strftime('%H:%M:%S', time.localtime())}')
+        wait_times_per_direction[self.direction].append(wait_time)
+
+        with open(f'output/{self.direction}.csv', 'a') as f:
+            f.write(f"{wait_time}\n")
+
+        with open(f'output/_output.csv', 'a'):
+            print(
+                f'{self.direction};{self.lane};{self.vehicleClass};{self.index};{wait_time}')
 
 
 # Begin the values of the game: TrafficSignals,
@@ -198,7 +207,7 @@ def repeat():
 
     # while the timer of current green signal is not zero
     while (signals[current_green_index].green > 0):
-        updateValues(current_green_index)
+        update_values(current_green_index)
         time.sleep(1)
 
     # Set last time green signal was in here
@@ -212,7 +221,7 @@ def repeat():
         for vehicle in vehicles[directionNumbers[current_green_index]][i]:
             vehicle.stop = defaultStop[directionNumbers[current_green_index]]
     while (signals[current_green_index].yellow > 0):  # while the timer of current yellow signal is not zero
-        updateValues(current_green_index)
+        update_values(current_green_index)
         time.sleep(1)
 
     # set yellow signal off
@@ -234,7 +243,7 @@ def repeat():
 
 
 # Update values of the signal timers after every second
-def updateValues(currentGreen):
+def update_values(currentGreen):
     for i in range(0, no_of_signals):
         if (i == currentGreen):
             if (is_yellow_on == False):
@@ -282,93 +291,59 @@ def generate_vehicles(num=None):
     generate_vehicles(n)
 
 
-def calculateTraffic():
+def calculate_traffic():
     while True:
-        # for direction in directionNumbers.values():
-        #     calculateWaitList(direction)
+        for direction in directionNumbers.values():
+            calculate_metrics_list(direction)
         time.sleep(1)
 
 
-# def calculateNextGreen():
-#     # Returns the direction and sets the time of the next green signal
-#     # Called when the time of the currentGreen is 0
-#     # Will need to have many more metrics to evaluate the next green signal TODO
-
-#     directionWithMostVehicles = max(vehiclesCount.values())
-#     aux = ""
-#     for direction, count in vehiclesCount.items():
-#         if count == directionWithMostVehicles:
-#             aux = direction
-
-#     for index, dicDirection in directionNumbers.items():
-#         if aux == dicDirection:
-#             return index
-
-
 # Calculate traffic density
-def calculateWaitList(direction):
+def calculate_metrics_list(direction):
     for index, dicDirection in directionNumbers.items():
         if direction == dicDirection:
             direction_index = index
 
-    # for direction in directionNumbers.values():
-    #     with open(f'./output/{direction}Wait.csv', 'a') as f:
-    #         f.write(
-    #             f"{vehiclesCount[direction]};{calculateCurrentAvgWait(direction)};{calculateLastGreen(direction_index)};{time.strftime('%H:%M:%S', time.localtime())}\n")
+    # Calculate average wait time in this direction
+
+    cur_avg_wait = calculate_current_avg_wait(direction)
+    cur_std_dev = calculate_current_standard_deviation(direction)
+
+    # Calculate standard deviation in this direction
+
+    for direction in directionNumbers.values():
+        with open(f'./output/{direction}.csv', 'a') as f:
+            f.write(f"{cur_avg_wait};{cur_std_dev}\n")
 
 
-def calculateMetricOutput(direction):
-    # Calculate average wait time
-    directionAvgWait = calculateCurrentAvgWait(direction)
-
-    # Calculate standard deviation
-    directionStandardDeviation = calculateCurrentStandardDeviation(direction)
-
-    # for direction in directionNumbers.values():
-    #     with open(f'./output/{direction}Wait.csv', 'a') as f:
-    #         f.write(
-    #             f"{vehiclesCount[direction]};{directionAvgWait};{directionStandardDeviation};{time.strftime('%H:%M:%S', time.localtime())}\n")
-
-
-def calculateLastGreen(directionIndex):
-    lastTimeGreen = signals[directionIndex].lastGreen
-    if (lastTimeGreen != 0 and lastTimeGreen != None):
-        lastTimeGreen = time.time() - signals[directionIndex].lastGreen
-        return round(lastTimeGreen, 1)
-    else:
-        # Indicates that the signal is yet to have a time where it was green
-        return -1
-
-
-def calculateCurrentAvgWait(direction):
-    totalWait = 0
-    if (vehiclesCount[direction] == 0):
+def calculate_current_avg_wait(direction):
+    total_wait = 0
+    if vehiclesCount[direction] == 0:
         return 0
     else:
         for lane in range(0, 2):
             for vehicle in vehicles[direction][lane]:
-                if (vehicle.crossed != 1 and vehicle.stopTime != ""):
-                    totalWait += time.time() - vehicle.stopTime
+                if vehicle.crossed != 1 and vehicle.stopTime != 0:
+                    total_wait += time.time() - vehicle.stopTime
                 else:
-                    totalWait += 0
-        return round(totalWait / vehiclesCount[direction], 1)
+                    total_wait += 0
+
+        return round(total_wait / vehiclesCount[direction], 1)
 
 
-def calculateCurrentStandardDeviation(direction):
-    directionAvgWait = calculateCurrentAvgWait(direction)
-
+def calculate_current_standard_deviation(direction):
     # List to store wait times for vehicles
     wait_times = []
 
     for lane in range(0, 2):
         for vehicle in vehicles[direction][lane]:
-            if vehicle.crossed != 1 and vehicle.stopTime != "":
-                currentWaitTime = time.time() - vehicle.creationTime
-                wait_times.append(currentWaitTime)
+            if vehicle.crossed != 1 and vehicle.stopTime != 0:
+                current_wait_time = time.time() - vehicle.creationTime
+                wait_times.append(current_wait_time)
 
-    # Calculate standard deviation
     if len(wait_times) > 1:
-        deviation = round(math.sqrt(sum((x - directionAvgWait) ** 2 for x in wait_times) / (len(wait_times) - 1)), 1)
+        # Calculate standard deviation
+        deviation = round(statistics.stdev(wait_times), 1)
     else:
         deviation = 0
 
@@ -392,8 +367,7 @@ class Main:
     font = pygame.font.Font(None, 30)
 
     threads = [{'name': "initialization", 'target': initialize, 'args': ()},
-               {'name': "generateVehicles", 'target': generate_vehicles, 'args': ()},
-               {'name': "calculateTraffic", 'target': calculateTraffic, 'args': ()}]
+               {'name': "generateVehicles", 'target': generate_vehicles, 'args': ()}]
 
     for thread in threads:
         thread = threading.Thread(name=thread['name'], target=thread['target'], args=thread['args'])
