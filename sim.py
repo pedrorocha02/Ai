@@ -6,16 +6,18 @@ import time
 import math
 
 from TrafficSignal import TrafficSignal
+from manager import calculate_next_green
 
 original_stdout = sys.stdout
 
 # Number of vehicles to be generated
-numVehicles = 20
+num_vehicles = 5
+crossed_vehicle_count = 0
 
 # Default values of signal timers
-defaultGreen = {0: 10, 1: 10, 2: 10, 3: 10}  # The values need to be updated by a function
-defaultRed = 150
-defaultYellow = 5
+defaultGreen = {0: 2, 1: 2, 2: 2, 3: 2}  # The values need to be updated by a function
+defaultRed = 50
+defaultYellow = 1
 
 # Stores the properties of the 4 signals
 no_of_signals = 4
@@ -41,10 +43,11 @@ vehicles = {'right': {0: [], 1: [], 2: [], 'crossed': 0}, 'down': {0: [], 1: [],
 # The type of vehicles present in the game (Can add more in the future)
 vehicleTypes = {0: 'car', 1: 'bus', 2: 'truck', 3: 'bike'}
 
-# All the directions available (Altough the vehicles don't change lanes/direction)
+# All the directions available (Although the vehicles don't change lanes/direction)
 directionNumbers = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
 
-vehiclesCount = {'right': 0, 'down': 0, 'left': 0, 'up': 0}  # Count of vehicles in each lane
+# Count of vehicles in each lane
+vehiclesCount = {'right': 0, 'down': 0, 'left': 0, 'up': 0}
 
 # Coordinates of signal image, timer, and vehicle count
 signalCoords = [(530, 230), (810, 230), (810, 570), (530, 570)]
@@ -177,7 +180,10 @@ class Vehicle(pygame.sprite.Sprite):
         wait_time = 0 if self.stopTime == 0 else round(self.exitTime - self.stopTime, 1)
         vehiclesCount[self.direction] -= 1
 
-        with open(f'./output.csv', 'a') as file:
+        global crossed_vehicle_count
+        crossed_vehicle_count += 1
+
+        with open(f'./output.csv', 'a'):
             print(f'{self.direction};{self.lane};{self.vehicleClass};{self.index};{wait_time};{time.strftime('%H:%M:%S', time.localtime())}')
 
 
@@ -217,12 +223,13 @@ def repeat():
     signals[current_green_index].yellow = defaultYellow
     signals[current_green_index].red = defaultRed
 
-    next_green_index = calculateNextGreen() % no_of_signals
+    next_green_index = calculate_next_green(vehiclesCount, directionNumbers) % no_of_signals
     current_green_index = next_green_index  # set next signal as green signal
     # nextGreen = (currentGreen+1)%noOfSignals    # set next green signal
 
+    # set the red time of next to next signal as (yellow time + green time) of next signal
     signals[next_green_index].red = signals[current_green_index].yellow + signals[
-        current_green_index].green  # set the red time of next to next signal as (yellow time + green time) of next signal
+        current_green_index].green
     repeat()
 
 
@@ -244,7 +251,7 @@ def generate_vehicles(num=None):
         return
 
     if num is None:
-        num = numVehicles
+        num = num_vehicles
 
     n = num
 
@@ -282,20 +289,20 @@ def calculateTraffic():
         time.sleep(1)
 
 
-def calculateNextGreen():
-    # Returns the direction and sets the time of the next green signal
-    # Called when the time of the currentGreen is 0
-    # Will need to have many more metrics to evaluate the next green signal TODO
+# def calculateNextGreen():
+#     # Returns the direction and sets the time of the next green signal
+#     # Called when the time of the currentGreen is 0
+#     # Will need to have many more metrics to evaluate the next green signal TODO
 
-    directionWithMostVehicles = max(vehiclesCount.values())
-    aux = ""
-    for direction, count in vehiclesCount.items():
-        if count == directionWithMostVehicles:
-            aux = direction
+#     directionWithMostVehicles = max(vehiclesCount.values())
+#     aux = ""
+#     for direction, count in vehiclesCount.items():
+#         if count == directionWithMostVehicles:
+#             aux = direction
 
-    for index, dicDirection in directionNumbers.items():
-        if aux == dicDirection:
-            return index
+#     for index, dicDirection in directionNumbers.items():
+#         if aux == dicDirection:
+#             return index
 
 
 # Calculate traffic density
@@ -393,7 +400,8 @@ class Main:
         thread.daemon = True
         thread.start()
 
-    while True:
+    # TODO: Add a more gracious way to exit the simulation
+    while crossed_vehicle_count < num_vehicles:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()

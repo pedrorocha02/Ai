@@ -1,3 +1,5 @@
 Direction;Lane;Vehicle class;Index;AvgWait;TimeStamp
-right;2;truck;0;0;19:14:47
-right;1;car;0;0;19:14:49
+up;2;bus;0;0.7;10:05:04
+up;2;bike;1;0.9;10:05:05
+up;2;bike;2;0;10:05:05
+up;2;car;3;0.9;10:05:07
