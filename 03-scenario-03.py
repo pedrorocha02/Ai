@@ -15,7 +15,7 @@ num_vehicles = 100
 crossed_vehicle_count = 0
 
 # Default values of signal timers
-defaultGreen = {0: 10, 1: 10, 2: 10, 3: 10}  # The values need to be updated by a function
+defaultGreen = {0: 1, 1: 10, 2: 10, 3: 10}  # The values need to be updated by a function
 defaultRed = 50
 defaultYellow = 2
 
@@ -23,9 +23,10 @@ defaultYellow = 2
 no_of_signals = 4
 signals = []
 for i in range(no_of_signals):
-    signals.append(TrafficSignal(defaultRed, defaultYellow, defaultGreen[i], None))
+    signals.append(TrafficSignal(defaultRed, defaultYellow, defaultGreen[i], 0))
 
-current_green_index = 0  # 0: right; 1: down; 2: left; 3: up
+# 0: right; 1: down; 2: left; 3: up
+current_green_index = 0
 next_green_index = 0
 
 is_yellow_on = False
@@ -75,7 +76,6 @@ simulation = pygame.sprite.Group()
 
 # List to store wait times for vehicles
 wait_times_per_direction = {"right": [], "down": [], "left": [], "up": []}
-
 
 class Vehicle(pygame.sprite.Sprite):
     def __init__(self, lane, vehicle_class, direction_number, direction):
@@ -231,7 +231,7 @@ def repeat():
     signals[current_green_index].yellow = defaultYellow
     signals[current_green_index].red = defaultRed
 
-    light = calculate_next_green_time(current_green_index, vehiclesCount, directionNumbers)
+    light = calculate_next_green_time(current_green_index, vehicles, vehiclesCount, directionNumbers, signals)
     index = light[0]
     open_for = light[1]
     next_green_index = index % no_of_signals
@@ -295,44 +295,44 @@ def generate_vehicles(num=None):
     generate_vehicles(n)
 
 
-def calculate_traffic():
-    while True:
-        for direction in directionNumbers.values():
-            calculate_metrics_list(direction)
-        time.sleep(1)
+# def calculate_traffic():
+#     while True:
+#         for direction in directionNumbers.values():
+#             calculate_metrics_list(direction)
+#         time.sleep(1)
 
 
 # Calculate traffic density
-def calculate_metrics_list(direction):
-    for index, dicDirection in directionNumbers.items():
-        if direction == dicDirection:
-            direction_index = index
+# def calculate_metrics_list(direction):
+#     for index, dicDirection in directionNumbers.items():
+#         if direction == dicDirection:
+#             direction_index = index
+#
+#     # Calculate average wait time in this direction
+#
+#     cur_avg_wait = calculate_current_avg_wait(direction)
+#     cur_std_dev = calculate_current_standard_deviation(direction)
+#
+#     # Calculate standard deviation in this direction
+#
+#     for direction in directionNumbers.values():
+#         with open(f'./output/{direction}.csv', 'a') as f:
+#             f.write(f"{cur_avg_wait};{cur_std_dev}\n")
 
-    # Calculate average wait time in this direction
 
-    cur_avg_wait = calculate_current_avg_wait(direction)
-    cur_std_dev = calculate_current_standard_deviation(direction)
-
-    # Calculate standard deviation in this direction
-
-    for direction in directionNumbers.values():
-        with open(f'./output/{direction}.csv', 'a') as f:
-            f.write(f"{cur_avg_wait};{cur_std_dev}\n")
-
-
-def calculate_current_avg_wait(direction):
-    total_wait = 0
-    if vehiclesCount[direction] == 0:
-        return 0
-    else:
-        for lane in range(0, 2):
-            for vehicle in vehicles[direction][lane]:
-                if vehicle.crossed != 1 and vehicle.stopTime != 0:
-                    total_wait += time.time() - vehicle.stopTime
-                else:
-                    total_wait += 0
-
-        return round(total_wait / vehiclesCount[direction], 1)
+# def calculate_current_avg_wait(direction):
+#     total_wait = 0
+#     if vehiclesCount[direction] == 0:
+#         return 0
+#     else:
+#         for lane in range(0, 2):
+#             for vehicle in vehicles[direction][lane]:
+#                 if vehicle.crossed != 1 and vehicle.stopTime != 0:
+#                     total_wait += time.time() - vehicle.stopTime
+#                 else:
+#                     total_wait += 0
+#
+#         return round(total_wait / vehiclesCount[direction], 1)
 
 
 def calculate_current_standard_deviation(direction):
@@ -378,7 +378,6 @@ class Main:
         thread.daemon = True
         thread.start()
 
-    # TODO: Add a more gracious way to exit the simulation
     while crossed_vehicle_count < num_vehicles:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

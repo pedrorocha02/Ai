@@ -96,32 +96,32 @@ class Vehicle(pygame.sprite.Sprite):
 
         if (len(vehicles[direction][lane]) > 1 and vehicles[direction][lane][
             self.index - 1].crossed == 0):  # if more than 1 vehicle in the lane of vehicle before it has crossed stop line
-            if (direction == 'right'):
+            if direction == 'right':
                 self.stop = vehicles[direction][lane][self.index - 1].stop - vehicles[direction][lane][
                     self.index - 1].image.get_rect().width - stoppingGap  # setting stop coordinate as: stop coordinate of next vehicle - width of next vehicle - gap
-            elif (direction == 'left'):
+            elif direction == 'left':
                 self.stop = vehicles[direction][lane][self.index - 1].stop + vehicles[direction][lane][
                     self.index - 1].image.get_rect().width + stoppingGap
-            elif (direction == 'down'):
+            elif direction == 'down':
                 self.stop = vehicles[direction][lane][self.index - 1].stop - vehicles[direction][lane][
                     self.index - 1].image.get_rect().height - stoppingGap
-            elif (direction == 'up'):
+            elif direction == 'up':
                 self.stop = vehicles[direction][lane][self.index - 1].stop + vehicles[direction][lane][
                     self.index - 1].image.get_rect().height + stoppingGap
         else:
             self.stop = defaultStop[direction]
 
         # Set new starting and stopping coordinate
-        if (direction == 'right'):
+        if direction == 'right':
             temp = self.image.get_rect().width + stoppingGap
             x[direction][lane] -= temp
-        elif (direction == 'left'):
+        elif direction == 'left':
             temp = self.image.get_rect().width + stoppingGap
             x[direction][lane] += temp
-        elif (direction == 'down'):
+        elif direction == 'down':
             temp = self.image.get_rect().height + stoppingGap
             y[direction][lane] -= temp
-        elif (direction == 'up'):
+        elif direction == 'up':
             temp = self.image.get_rect().height + stoppingGap
             y[direction][lane] += temp
         simulation.add(self)
